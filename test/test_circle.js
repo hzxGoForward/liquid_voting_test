@@ -140,27 +140,6 @@ contract('TestChain', (accounts) => {
             }
         }),
             it('test undelegate', async () => {
-        
-                /*
-                         1
-                        / \
-                        2   3
-                      / | \  \
-                     4  5  6  7            16
-                                            |
-                                            8
-                                            / \
-                                           10
-                                    17
-                                    |
-                                    9
-                                / | \
-                                11 12 13 
-                                    | 
-                                    14
-                                    | 
-                                    15
-        */
         for (i = 1; i < vcount; ++i) {
             await democracy.setWeight(accounts[i], 1);
             n = VNode.createNew(accounts[i], 1, 0, 0, 0, 0, 0);
@@ -174,7 +153,7 @@ contract('TestChain', (accounts) => {
             console.log("%d -> %d\n", delegator, delegatee);
             succ = false;
             try {
-                await democracy.undelegate(accounts[delegator]);
+                await democracy.undelegate({ from: accounts[delegator] });
                 succ = true;
             }
             catch (error) {

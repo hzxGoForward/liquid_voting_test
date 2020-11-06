@@ -17,12 +17,11 @@ contract LiquidDemocracy{
   LinkCutTree lct;
 
   event Delegate(address from, address to, uint height);
-  event Undelegate(address from, address to, uint height);
+  event Undelegate(uint32 from, uint32 to);
   event SetWeight(address addr, uint weight, uint height);
   event CreateVote(address addr, uint height);
   event ShowNode(address addr, uint32 num, uint32 fa, uint32 lc, uint32 rc);
   event ReDelegate(uint32 node, uint32 oldDelegate, uint32 newDelegate);
-
   constructor() public{
     owner = msg.sender;
     voter_count = 0;
@@ -41,7 +40,7 @@ contract LiquidDemocracy{
 
     // add a new address.
     uint32 num = lct.add_address(addr);
-    emit SetWeight(addr, weight, block.number);
+    // emit SetWeight(addr, weight, block.number);
   }
 
   function check_circle(address _from, address _to) internal view returns(bool){
@@ -92,6 +91,9 @@ contract LiquidDemocracy{
     address old = v_to_parent[msg.sender];
     require(old!=address(0x0), "have no delegatee to undelegate");
     lct.undelegate(msg.sender, old);
+    uint32 from = lct.add_address(msg.sender);
+    uint32 to = lct.add_address(old);
+    emit Undelegate(from, to);
   }
 
   function getDelegator(address addr, uint height) public view returns(address ){
