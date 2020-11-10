@@ -39,12 +39,26 @@ contract LiquidDemocracy{
     voter_count ++;
 
     // add a new address.
-    uint32 num = lct.add_address(addr);
+    lct.addAddress(addr);
     // emit SetWeight(addr, weight, block.number);
   }
 
-  function check_circle(address _from, address _to) internal view returns(bool){
-    return false;
+  function check_circle(address _from, address _to) internal returns(bool){
+    address fa_from = v_to_parent[_from];
+    uint32 num_from = lct.addAddress(_from);
+    uint32 num_to = lct.addAddress(_to);
+    // 先尝试切断_from的delegate
+    if(fa_from != address(0x0))
+        lct.undelegate(_from, fa_from);
+    // 以_from为根, 寻找_to的根，如果其根为_from,则_from会与_to之间产生环
+    bool has_circle = false;
+    lct.makeRoot(num_from);
+    if(lct.findRoot(num_to) == num_from){
+        has_circle = true;
+        // 恢复原来的代理
+        lct.delegate(_from, fa_from);
+    }
+    return has_circle;
   }
 
   function delegate(address _to) public {
@@ -53,7 +67,7 @@ contract LiquidDemocracy{
     require(vote_weight[_to] != 0, "no _to");
 
     // 避免环路代理
-    bool has_circle = lct.is_connected(msg.sender, _to);
+    bool has_circle = lct.isConnected(msg.sender, _to);
     require(!has_circle, "can not be circle");
 
     // 避免重复代理
@@ -65,19 +79,22 @@ contract LiquidDemocracy{
       lct.undelegate(msg.sender, old);
       address[] storage children = v_to_children[old];
       children.remove(msg.sender);
-      num_old = lct.add_address(old);
+      num_old = lct.addAddress(old);
     }
-
     lct.delegate(msg.sender, _to);
+
+
     v_to_parent[msg.sender] = _to;
     v_to_children[_to].push(msg.sender);
-    uint32 num_sender = lct.add_address(msg.sender);
-    uint32 num_to = lct.add_address(_to);
+    uint32 num_sender = lct.addAddress(msg.sender);
+    uint32 num_to = lct.addAddress(_to);
     uint256 len = lct.getVchildLen();
     uint32 sender_lch = lct.getChild(0, num_sender);
     uint32 sender_rch = lct.getChild(1, num_sender);
-    uint32 sender_fa = lct.add_address(_to);
-    uint32 to_fa = lct.add_address(v_to_parent[_to]);
+    uint32 sender_fa = num_to;
+    uint32 to_fa = 0;
+    if(v_to_parent[_to] != address(0x0))
+        to_fa = lct.addAddress(v_to_parent[_to]);
     uint32 to_lch = lct.getChild(0, num_to);
     uint32 to_rch = lct.getChild(1, num_to);
 
@@ -90,10 +107,18 @@ contract LiquidDemocracy{
   function undelegate() public {
     address old = v_to_parent[msg.sender];
     require(old!=address(0x0), "have no delegatee to undelegate");
+    
     lct.undelegate(msg.sender, old);
-    uint32 from = lct.add_address(msg.sender);
-    uint32 to = lct.add_address(old);
-    emit Undelegate(from, to);
+    address[] storage children = v_to_children[old];
+    children.remove(msg.sender);
+    v_to_parent[msg.sender] = address(0x0);
+    
+    uint32 num_sender = lct.addAddress(msg.sender);
+    uint32 sender_lch = lct.getChild(0, num_sender);
+    uint32 sender_rch = lct.getChild(1, num_sender);
+    uint32 sender_fa = lct.addAddress(v_to_parent[msg.sender]);
+    emit ShowNode(msg.sender, num_sender, sender_fa, sender_lch, sender_rch);
+    emit Undelegate(num_sender, sender_fa);
   }
 
   function getDelegator(address addr, uint height) public view returns(address ){

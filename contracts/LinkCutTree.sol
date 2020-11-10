@@ -9,9 +9,6 @@ contract LinkCutTree {
      uint32 public node_count;
     // uint[] weight;
 
-    event AddAddress(address from, uint32 num);
-    event Access(uint32 num);
-
     constructor() public {
         node_count = 0;
         vfather.push(0);
@@ -124,7 +121,7 @@ contract LinkCutTree {
     }
 
     // 将原来的树中x节点作为根节点
-    function makeroot(uint32 x) public
+    function makeRoot(uint32 x) public
     {
         access(x);
         // splay(x) 之后x在这个树的最右下角 
@@ -160,31 +157,35 @@ contract LinkCutTree {
         // 如果x和y根本不在同一条路径上，则跳过
         if (findRoot(x) != findRoot(y))
             return;
-        makeroot(x);
+        makeRoot(x);
         access(y);
         splay(y);
     }
 
  // _from delegates its voting power to _to
     function delegate(address _from, address _to) public returns(bool){
-        bool has_path = is_connected(_from, _to);
-        require(!has_path, "cannot be circle");
-        uint32 num_from = add_address(_from);
-        uint32 num_to = add_address(_to);
-        makeroot(num_from);
+        if(_to == address(0x0))
+            return false;
+        bool has_path = isConnected(_from, _to);
+        if(has_path)
+            return false;
+        uint32 num_from = addAddress(_from);
+        uint32 num_to = addAddress(_to);
+        makeRoot(num_from);
         vfather[num_from] = num_to;
         return true;
     }
 
     // _from delegates its voting power to _to
     function undelegate(address _from, address _to) public returns(bool){
-        uint32 x = add_address(_from);
-        uint32 y = add_address(_to);
-        makeroot(y);
+        uint32 x = addAddress(_from);
+        uint32 y = addAddress(_to);
+        makeRoot(y);
         // 如果y和x不在一棵树上，或者x和y之间不邻接(x的父亲不是y 或者x有左儿子)，不进行cut
         uint32 f = vfather[x];
-        bool connected = (findRoot(x) != y )|| (f != y) || (vchild[x][0]>0);
-        require(connected, "have no delegation relationship");
+        bool noConnected = (findRoot(x) != y )|| (f != y) || (vchild[x][0]>0);
+        if(noConnected)
+            return false;
         vfather[x] = 0;
         vchild[y][1] = 0;
         update(y);
@@ -192,7 +193,7 @@ contract LinkCutTree {
     }
 
     // check wheter there is a path between _from and to
-    function is_connected(address _from, address _to) public returns(bool){
+    function isConnected(address _from, address _to) public returns(bool){
         uint32 from_number = mAddr_number[_from];
         uint32 to_number = mAddr_number[_to];
         require(from_number<=node_count, "number is valid");
@@ -201,14 +202,14 @@ contract LinkCutTree {
         if(from_number == 0|| to_number == 0){
             ans = true;
         }
-        // else if(findRoot(from_number) == findRoot(to_number)){
-        //     ans = true;
-        // }
+        else if(findRoot(from_number) == findRoot(to_number)){
+            ans = true;
+        }
         return ans;
     }
 
         // add a new address
-    function add_address(address addr) public returns(uint32){
+    function addAddress(address addr) public returns(uint32){
         if (mAddr_number[addr] == 0) {
             ++node_count;
             mAddr_number[addr] = node_count;

@@ -11,7 +11,7 @@ const LiquidVoteFactory = artifacts.require('LiquidVoteFactory');
 contract('TestChain', (accounts) => {
 
     let democracy = {};
-    let vcount = 100;
+    let vcount = 22;
     let vg = {};
     let svote = {};
     let lvote = {};
@@ -25,7 +25,7 @@ contract('TestChain', (accounts) => {
 
     context("delegate", () => {
 
-        it('test construct delegate graph', async () => {
+        it('test constructing delegate graph', async () => {
 
             // 这段代码首先建立一张代理图,自下往上建立代理关系
             /*
@@ -70,12 +70,6 @@ contract('TestChain', (accounts) => {
         }),
     
         it('test circle delegate', async () => {
-            for (i = 1; i < vcount; ++i) {
-                await democracy.setWeight(accounts[i], 1);
-                n = VNode.createNew(accounts[i], 1, 0, 0, 0, 0, 0);
-                vg.addNode(n);
-            }
-            // 下列这段代码进行环形检测
             // 应该全部失败
             var arr2 = [[1, 2], [1, 7], [1, 8], [8, 3], [9,3], [10, 1], [12, 3], [14, 6], [15, 4], [11, 2], [12, 10], [13, 1], [14, 5], [15, 4]];
             for (var i = 0; i < arr2.length; ++i) {
@@ -91,10 +85,9 @@ contract('TestChain', (accounts) => {
                     console.log(error);
                     console.log('retry...');
                 }
-                vg.addEdge(accounts[delegator], accounts[delegatee]);
             }
         }),
-            it('test change delegatee', async () => {
+        it('test change delegatee', async () => {
         
                 /*
                          1
@@ -116,11 +109,6 @@ contract('TestChain', (accounts) => {
                                     | 
                                     15
         */
-        for (i = 1; i < vcount; ++i) {
-            await democracy.setWeight(accounts[i], 1);
-            n = VNode.createNew(accounts[i], 1, 0, 0, 0, 0, 0);
-            vg.addNode(n);
-        }
             // 倒数第一个非法，其他全部合法
             var arr3 = [[8, 16], [9, 17], [14,10], [11, 10], [16, 3], [17,1], [17,2]];
             for (var i = 0; i < arr3.length; ++i) {
@@ -136,21 +124,16 @@ contract('TestChain', (accounts) => {
                     console.log(error);
                     console.log('retry...');
                 }
-                vg.addEdge(accounts[delegator], accounts[delegatee]);
             }
         }),
-            it('test undelegate', async () => {
-        for (i = 1; i < vcount; ++i) {
-            await democracy.setWeight(accounts[i], 1);
-            n = VNode.createNew(accounts[i], 1, 0, 0, 0, 0, 0);
-            vg.addNode(n);
-        }
-        // 倒数第一个非法，其他全部合法
-        var arr3 = [[8, 16], [9, 17], [14,10], [11, 10], [16, 3], [17,1], [17,2]];
-        for (var i = 0; i < arr3.length; ++i) {
-            var delegator = arr3[i][0];
-            var delegatee = arr3[i][1];
-            console.log("%d -> %d\n", delegator, delegatee);
+        
+        it('test undelegate', async () => {
+        // 全部合法
+        var arr4 = [[8, 16], [9, 17], [14,10], [11, 10], [16, 3], [17,1]];
+        for (var i = 0; i < arr4.length; ++i) {
+            var delegator = arr4[i][0];
+            var delegatee = arr4[i][1];
+            console.log("%d undelegate\n", delegator);
             succ = false;
             try {
                 await democracy.undelegate({ from: accounts[delegator] });
