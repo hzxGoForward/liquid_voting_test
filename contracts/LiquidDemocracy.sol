@@ -48,44 +48,50 @@ contract LiquidDemocracy{
     uint32 num_from = lct.addAddress(_from);
     uint32 num_to = lct.addAddress(_to);
     // 先尝试切断_from的delegate
-    if(fa_from != address(0x0))
+    if(fa_from != address(0x0)){
         lct.undelegate(_from, fa_from);
-    // 以_from为根, 寻找_to的根，如果其根为_from,则_from会与_to之间产生环
+        address[] storage children = v_to_children[fa_from];
+        children.remove(_from);
+        v_to_parent[_from] = address(0x0);
+    }
+    // 寻找_to的根，如果其根为_from,则_from会与_to之间产生环
     bool has_circle = false;
-    lct.makeRoot(num_from);
-    if(lct.findRoot(num_to) == num_from){
+
+    if(lct.findRoot(num_to) == lct.findRoot(num_from)){
         has_circle = true;
         // 恢复原来的代理
+        v_to_children[fa_from].push(_from);
+        v_to_parent[_from] = fa_from;
         lct.delegate(_from, fa_from);
     }
     return has_circle;
   }
 
+
   function delegate(address _to) public {
     require(_to != msg.sender, "cannot be self");
     require(vote_weight[msg.sender] != 0, "no sender");
     require(vote_weight[_to] != 0, "no _to");
-
-    // 避免环路代理
-    bool has_circle = lct.isConnected(msg.sender, _to);
-    require(!has_circle, "can not be circle");
-
     // 避免重复代理
     address old = v_to_parent[msg.sender];
     require(old != _to, "repeat delegate");
 
+    // 避免环路代理
+    bool has_circle = check_circle(msg.sender, _to);
+    require(!has_circle, "can not be circle");
+
     uint32 num_old = 0;
     if(old != address(0x0)){
-      lct.undelegate(msg.sender, old);
       address[] storage children = v_to_children[old];
       children.remove(msg.sender);
       num_old = lct.addAddress(old);
     }
-    lct.delegate(msg.sender, _to);
+    if(lct.delegate(msg.sender, _to)){
+        v_to_parent[msg.sender] = _to;
+        v_to_children[_to].push(msg.sender);
+    }
 
 
-    v_to_parent[msg.sender] = _to;
-    v_to_children[_to].push(msg.sender);
     uint32 num_sender = lct.addAddress(msg.sender);
     uint32 num_to = lct.addAddress(_to);
     uint256 len = lct.getVchildLen();
@@ -98,8 +104,7 @@ contract LiquidDemocracy{
     uint32 to_lch = lct.getChild(0, num_to);
     uint32 to_rch = lct.getChild(1, num_to);
 
-    emit Delegate(msg.sender, _to, block.number);
-    emit ShowNode(_to, num_to, to_fa, to_lch, to_rch);
+    // emit Delegate(msg.sender, _to, block.number);
     emit ShowNode(msg.sender, num_sender, sender_fa, sender_lch, sender_rch);
     emit ReDelegate(num_sender,num_old, num_to);
   }
@@ -116,9 +121,9 @@ contract LiquidDemocracy{
     uint32 num_sender = lct.addAddress(msg.sender);
     uint32 sender_lch = lct.getChild(0, num_sender);
     uint32 sender_rch = lct.getChild(1, num_sender);
-    uint32 sender_fa = lct.addAddress(v_to_parent[msg.sender]);
-    emit ShowNode(msg.sender, num_sender, sender_fa, sender_lch, sender_rch);
-    emit Undelegate(num_sender, sender_fa);
+    emit Undelegate(num_sender, lct.addAddress(old));
+    emit ShowNode(msg.sender, num_sender, 0, sender_lch, sender_rch);
+    
   }
 
   function getDelegator(address addr, uint height) public view returns(address ){

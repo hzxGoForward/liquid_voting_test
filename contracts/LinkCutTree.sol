@@ -103,7 +103,7 @@ contract LinkCutTree {
     }
 
     // create a path from the root to x.
-    function access(uint32 x) public{
+    function access(uint32 x) internal{
         // 将最后一个点的右儿子变为0，即变为虚边
         uint32 son = 0;
         while(x>0){
@@ -121,7 +121,7 @@ contract LinkCutTree {
     }
 
     // 将原来的树中x节点作为根节点
-    function makeRoot(uint32 x) public
+    function makeRoot(uint32 x) internal
     {
         access(x);
         // splay(x) 之后x在这个树的最右下角 
@@ -152,7 +152,7 @@ contract LinkCutTree {
     }
 
     // 把x到y的路径拆成一棵方便的Splay树
-    function split(uint32 x, uint32 y) public
+    function split(uint32 x, uint32 y) internal
     {
         // 如果x和y根本不在同一条路径上，则跳过
         if (findRoot(x) != findRoot(y))
@@ -166,9 +166,9 @@ contract LinkCutTree {
     function delegate(address _from, address _to) public returns(bool){
         if(_to == address(0x0))
             return false;
-        bool has_path = isConnected(_from, _to);
-        if(has_path)
-            return false;
+        // bool has_path = isConnected(_from, _to);
+        // if(has_path)
+        //     return false;
         uint32 num_from = addAddress(_from);
         uint32 num_to = addAddress(_to);
         makeRoot(num_from);
@@ -183,7 +183,7 @@ contract LinkCutTree {
         makeRoot(y);
         // 如果y和x不在一棵树上，或者x和y之间不邻接(x的父亲不是y 或者x有左儿子)，不进行cut
         uint32 f = vfather[x];
-        bool noConnected = (findRoot(x) != y )|| (f != y) || (vchild[x][0]>0);
+        bool noConnected = (findRoot(x) != findRoot(y) )|| (f != y) || (vchild[x][0]>0);
         if(noConnected)
             return false;
         vfather[x] = 0;
@@ -210,7 +210,9 @@ contract LinkCutTree {
 
         // add a new address
     function addAddress(address addr) public returns(uint32){
-        if (mAddr_number[addr] == 0) {
+        if(addr == address(0x0))
+            return 0;
+        else if (mAddr_number[addr] == 0) {
             ++node_count;
             mAddr_number[addr] = node_count;
             vfather.push(0);
