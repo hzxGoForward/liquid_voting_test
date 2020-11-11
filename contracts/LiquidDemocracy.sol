@@ -20,7 +20,8 @@ contract LiquidDemocracy{
   event Undelegate(uint32 from, uint32 to);
   event SetWeight(address addr, uint weight, uint height);
   event CreateVote(address addr, uint height);
-  event ShowNode(address addr, uint32 num, uint32 fa, uint32 lc, uint32 rc);
+  //   event ShowNode(address addr, uint32 num, uint32 father, uint32 lc, uint32 rc);
+  event ShowNode(address addr, uint32 num, uint32 fatherNum);
   event ReDelegate(uint32 node, uint32 oldDelegate, uint32 newDelegate);
   constructor() public{
     owner = msg.sender;
@@ -39,31 +40,38 @@ contract LiquidDemocracy{
     voter_count ++;
 
     // add a new address.
-    lct.addAddress(addr);
+    lct.getAddrNum(addr);
     // emit SetWeight(addr, weight, block.number);
   }
 
   function check_circle(address _from, address _to) internal returns(bool){
     address fa_from = v_to_parent[_from];
-    uint32 num_from = lct.addAddress(_from);
-    uint32 num_to = lct.addAddress(_to);
-    // 先尝试切断_from的delegate
+    uint32 num_from = lct.getAddrNum(_from);
+    uint32 num_to = lct.getAddrNum(_to);
+    
+    // 先尝试切断_from的delegatee
+    lct.access(num_from);
     if(fa_from != address(0x0)){
-        lct.undelegate(_from, fa_from);
+        lct.cut(_from, fa_from);
         address[] storage children = v_to_children[fa_from];
         children.remove(_from);
         v_to_parent[_from] = address(0x0);
     }
-    // 寻找_to的根，如果其根为_from,则_from会与_to之间产生环
+    // 将根节点到num_to的路径放入splay树
+     lct.access(num_to);
+    
+    // 检测_from是否和_to存在路径，如果存在，则说明有环
     bool has_circle = false;
-
-    if(lct.findRoot(num_to) == lct.findRoot(num_from)){
+    if(lct.isConnected(_from, _to)){
         has_circle = true;
-        // 恢复原来的代理
-        v_to_children[fa_from].push(_from);
-        v_to_parent[_from] = fa_from;
-        lct.delegate(_from, fa_from);
     }
+    // 最后恢复_from的delegatee
+    if(fa_from != address(0x0)){
+        lct.link(_from, fa_from);
+        v_to_parent[_from] = fa_from;
+        v_to_children[fa_from].push(_from);
+    }
+    
     return has_circle;
   }
 
@@ -76,7 +84,7 @@ contract LiquidDemocracy{
     address old = v_to_parent[msg.sender];
     require(old != _to, "repeat delegate");
 
-    // 避免环路代理
+    // 检测是否是环路代理
     bool has_circle = check_circle(msg.sender, _to);
     require(!has_circle, "can not be circle");
 
@@ -84,28 +92,31 @@ contract LiquidDemocracy{
     if(old != address(0x0)){
       address[] storage children = v_to_children[old];
       children.remove(msg.sender);
-      num_old = lct.addAddress(old);
+      num_old = lct.getAddrNum(old);
+      v_to_parent[msg.sender] = address(0x0);
+      lct.cut(msg.sender, old);
     }
-    if(lct.delegate(msg.sender, _to)){
-        v_to_parent[msg.sender] = _to;
-        v_to_children[_to].push(msg.sender);
-    }
+    // 更新新的代理
+    lct.link(msg.sender, _to);
+    v_to_parent[msg.sender] = _to;
+    v_to_children[_to].push(msg.sender);
+    
 
-
-    uint32 num_sender = lct.addAddress(msg.sender);
-    uint32 num_to = lct.addAddress(_to);
-    uint256 len = lct.getVchildLen();
-    uint32 sender_lch = lct.getChild(0, num_sender);
-    uint32 sender_rch = lct.getChild(1, num_sender);
+    uint32 num_sender = lct.getAddrNum(msg.sender);
+    uint32 num_to = lct.getAddrNum(_to);
     uint32 sender_fa = num_to;
-    uint32 to_fa = 0;
+
+    address fa_to_addr = v_to_parent[_to];
+    uint32 fa_to = 0;
     if(v_to_parent[_to] != address(0x0))
-        to_fa = lct.addAddress(v_to_parent[_to]);
+        fa_to = lct.getAddrNum(v_to_parent[_to]);
     uint32 to_lch = lct.getChild(0, num_to);
     uint32 to_rch = lct.getChild(1, num_to);
 
     // emit Delegate(msg.sender, _to, block.number);
-    emit ShowNode(msg.sender, num_sender, sender_fa, sender_lch, sender_rch);
+    emit ShowNode(msg.sender, num_sender, sender_fa);
+
+    emit ShowNode(_to, num_to, fa_to);
     emit ReDelegate(num_sender,num_old, num_to);
   }
 
@@ -113,16 +124,14 @@ contract LiquidDemocracy{
     address old = v_to_parent[msg.sender];
     require(old!=address(0x0), "have no delegatee to undelegate");
     
-    lct.undelegate(msg.sender, old);
+    lct.cut(msg.sender, old);
     address[] storage children = v_to_children[old];
     children.remove(msg.sender);
     v_to_parent[msg.sender] = address(0x0);
     
-    uint32 num_sender = lct.addAddress(msg.sender);
-    uint32 sender_lch = lct.getChild(0, num_sender);
-    uint32 sender_rch = lct.getChild(1, num_sender);
-    emit Undelegate(num_sender, lct.addAddress(old));
-    emit ShowNode(msg.sender, num_sender, 0, sender_lch, sender_rch);
+    uint32 num_sender = lct.getAddrNum(msg.sender);
+    emit Undelegate(num_sender, lct.getAddrNum(old));
+    emit ShowNode(msg.sender, num_sender, 0);
     
   }
 

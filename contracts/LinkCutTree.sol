@@ -19,7 +19,7 @@ contract LinkCutTree {
 
 
     // judge x is a left child or a right child in a splay.
-    function getch(uint32 x) public view returns (uint32) {
+    function getch(uint32 x) internal view returns (uint32) {
         uint32 ans = 0;
         if (vchild[vfather[x]][1] == x) ans += 1;
         return ans;
@@ -27,15 +27,12 @@ contract LinkCutTree {
 
     // judge wheter x is the root of its splay.
     function isroot(uint32 x) public view returns(bool){
-        bool ans = false;
-        uint32 f = vfather[x];
-        if(f == 0 || (vchild[f][0] != x && vchild[f][1] != x))
-            ans = true;
-        return ans;
+        require(x>0, "node num must greater than 0");
+        return vchild[vfather[x]][0] != x && vchild[vfather[x]][1] != x;
     }
 
     // transmit information from x to its children.
-    function pushdown(uint32 x)public {
+    function pushdown(uint32 x) internal {
         if(vtag[x] == 1){
             if (vchild[x][0] > 0){
                 uint32 temp = vchild[vchild[x][0]][0];
@@ -54,14 +51,14 @@ contract LinkCutTree {
     }
 
     // update info from its corresponding splay root to x.
-    function update(uint32 x) public {
+    function update(uint32 x) internal {
         if(!isroot(x))
             update(vfather[x]);
         pushdown(x);
     }
 
     // rotate a node x
-    function rotate(uint32 x)public{
+    function rotate(uint32 x) internal {
         if(isroot(x)){
             return;
         }
@@ -90,8 +87,8 @@ contract LinkCutTree {
             f = vfather[x];
             if (!isroot(f)){
                 uint32 chx = getch(x);
-                uint32 chy = getch(f);
-                if(chx == chy){
+                uint32 chf = getch(f);
+                if(chx == chf){
                     rotate(f);
                 }
                 else{
@@ -103,7 +100,7 @@ contract LinkCutTree {
     }
 
     // create a path from the root to x.
-    function access(uint32 x) internal{
+    function access(uint32 x) public{
         // 将最后一个点的右儿子变为0，即变为虚边
         uint32 son = 0;
         while(x>0){
@@ -111,12 +108,10 @@ contract LinkCutTree {
             splay(x);
             // 将x的右儿子设置为前一棵splay树的树根
             // require(vchild[1].length >x, "HZX--ARRAY LENGTH ERROR--HZX");
-            // 这一句出现了bug，为什么？
             vchild[x][1] = son;
-            // // son 保存当前splay树树根，x是其父节点
+            // son 保存当前splay树树根，x是其父节点
             son = x;
             x = vfather[x];
-            // x = 0;
         }
     }
 
@@ -162,56 +157,58 @@ contract LinkCutTree {
         splay(y);
     }
 
- // _from delegates its voting power to _to
-    function delegate(address _from, address _to) public returns(bool){
-        if(_to == address(0x0))
-            return false;
-        // bool has_path = isConnected(_from, _to);
-        // if(has_path)
-        //     return false;
-        uint32 num_from = addAddress(_from);
-        uint32 num_to = addAddress(_to);
-        makeRoot(num_from);
-        vfather[num_from] = num_to;
-        return true;
-    }
-
-    // _from delegates its voting power to _to
-    function undelegate(address _from, address _to) public returns(bool){
-        uint32 x = addAddress(_from);
-        uint32 y = addAddress(_to);
-        makeRoot(y);
-        // 如果y和x不在一棵树上，或者x和y之间不邻接(x的父亲不是y 或者x有左儿子)，不进行cut
-        uint32 f = vfather[x];
-        bool noConnected = (findRoot(x) != findRoot(y) )|| (f != y) || (vchild[x][0]>0);
-        if(noConnected)
-            return false;
-        vfather[x] = 0;
-        vchild[y][1] = 0;
-        update(y);
-        return true;
-    }
-
     // check wheter there is a path between _from and to
     function isConnected(address _from, address _to) public returns(bool){
-        uint32 from_number = mAddr_number[_from];
-        uint32 to_number = mAddr_number[_to];
-        require(from_number<=node_count, "number is valid");
-        require(to_number<=node_count, "number is valid");
+        uint32 num_from = mAddr_number[_from];
+        uint32 num_to = mAddr_number[_to];
+        require(num_from != 0, "isConnected: _from address invalid");
+        require(num_to != 0, "isConnected: _to address invalid");
         bool ans = false;
-        if(from_number == 0|| to_number == 0){
-            ans = true;
-        }
-        else if(findRoot(from_number) == findRoot(to_number)){
+        if(num_from == num_to || findRoot(num_from) == findRoot(num_to)){
             ans = true;
         }
         return ans;
     }
 
+
+ // 在x和y之间连接一条边
+    function link(address _from, address _to) public returns(bool){
+        require(_from!=address(0x0), "link: from node is invalid");
+        require(_to!=address(0x0), "link: _to node is invalid");
+        require(_from != _to, "link: from and to are a same node");
+        // 此时两个点之间应该没有链接
+        
+        uint32 num_from = getAddrNum(_from);
+        uint32 num_to = getAddrNum(_to);
+        makeRoot(num_from);
+        bool has_path = isConnected(_from, _to);
+        require(!has_path, "link: _from and _to is connected");
+        vfather[num_from] = num_to;
+        return true;
+    }
+
+    // 断开from和to之间的边
+    function cut(address _from, address _to) public returns(bool){
+        uint32 x = getAddrNum(_from);
+        uint32 y = getAddrNum(_to);
+        makeRoot(x);
+        // 如果y和x不在一棵树上，或者x和y之间不邻接(x的父亲不是y 或者x有左儿子)，不进行cut
+        uint32 f = vfather[y];
+        bool noConnected = (findRoot(y) != x || vfather[y] != x || vchild[y][0]>0);
+        require(!noConnected, "two nodes no connected");
+        vchild[x][1] = 0;
+        vfather[y] = 0;
+        update(x);
+        return true;
+    }
+
+
         // add a new address
-    function addAddress(address addr) public returns(uint32){
+    function getAddrNum(address addr) public returns(uint32){
+        // 如果是0地址，返回0
         if(addr == address(0x0))
             return 0;
+        // 如果是新地址，生成一个编号
         else if (mAddr_number[addr] == 0) {
             ++node_count;
             mAddr_number[addr] = node_count;
