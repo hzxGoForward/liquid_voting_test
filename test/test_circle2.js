@@ -61,78 +61,78 @@ contract('TestChain', (accounts) => {
             }
         })
     
-        // ,it('test undelegate', async () => {
-        //             /*
-        //                     1
-        //                     / \
-        //                     2   3
-        //                 / | \  \
-        //                 4  5  6  7
-        //                         |
-        //                         8
-        //                         /
-        //                         9   
-        // */
-        //     var arr2 = [[1,2], [2,1], [8, 7], [9,8], [4,2], [5,2], [6,2], [7,3]];
-        //     var res = [false, true, true, true, true, true, true, true]
-        //     for (var i = 0; i < arr2.length; ++i) {
-        //         var delegator = arr2[i][0];
-        //         var delegatee = arr2[i][1];
-        //         console.log("%d undelegate\n", delegator);
-        //         succ = false;
-        //         try {
-        //             await democracy.undelegate({ from: accounts[delegator] });
-        //             succ = true;
-        //         }
-        //         catch (error) {
-        //             console.log(error);
-        //             console.log('retry...');
-        //         }
-        //         console.log("%d -> %d\n", delegator, delegatee);
-        //         try {
-        //             await democracy.delegate(accounts[delegatee], { from: accounts[delegator] });
-        //             succ = true;
-        //         }
-        //         catch (error) {
-        //             console.log(error);
-        //             console.log('retry...');
-        //         }
-        //         console.assert(succ === res[i], "not equal");
-        //     }
-        // })
+        ,it('test undelegate and recovery', async () => {
+                    /*
+                             1
+                            / \
+                          2    3
+                        / | \   \
+                       4  5  6  7
+                                |
+                                8
+                                /
+                                9   
+        */
+            var arr2 = [[1,2], [2,1], [8, 7], [9,8], [4,2], [5,2], [6,2], [7,3]];
+            var res = [false, true, true, true, true, true, true, true]
+            for (var i = 0; i < arr2.length; ++i) {
+                var delegator = arr2[i][0];
+                var delegatee = arr2[i][1];
+                console.log("%d undelegate\n", delegator);
+                succ = false;
+                try {
+                    await democracy.undelegate({ from: accounts[delegator] });
+                    succ = true;
+                }
+                catch (error) {
+                    console.log(error);
+                    console.log('retry...');
+                }
+                console.log("%d -> %d\n", delegator, delegatee);
+                try {
+                    await democracy.delegate(accounts[delegatee], { from: accounts[delegator] });
+                    succ = true;
+                }
+                catch (error) {
+                    console.log(error);
+                    console.log('retry...');
+                }
+                console.assert(succ === res[i], "not equal");
+            }
+        })
             
-        // ,it('test circle delegate 1 -------', async () => {
-        //     /*
-        //                         1
-        //                        / \
-        //                       2   3
-        //                     / | \  \
-        //                    4  5  6  7
-        //                             |
-        //                             8
-        //                            /
-        //                           9   
-        //     */
-        //    var arr2 = [[1, 2],[1,4],[1,5],[1,6],[1,3], [1,7], [1,8], [1,9], [2,4], [2, 5],[2,6], [3,7], [3,8], [3,9], [7,8], [7,9], [8,9]];
+        ,it('test circle delegate 1 -------', async () => {
+            /*
+                                1
+                               / \
+                              2   3
+                            / | \  \
+                           4  5  6  7
+                                    |
+                                    8
+                                   /
+                                  9   
+            */
+           var arr2 = [[1, 2],[1,4],[1,5],[1,6],[1,3], [1,7], [1,8], [1,9], [2,4], [2, 5],[2,6], [3,7], [3,8], [3,9], [7,8], [7,9], [8,9]];
            
-        //     for (var i = 0; i < arr2.length; ++i) {
-        //        var delegator = arr2[i][0];
-        //        var delegatee = arr2[i][1];
-        //        succ = false;
-        //        console.log("%d -> %d\n", delegator, delegatee);
-        //        try {
-        //            await democracy.delegate(accounts[delegatee], { from: accounts[delegator] });
-        //            succ = true;
-        //        }
-        //        catch (error) {
-        //            console.log(error);
-        //            console.log('retry...');
-        //        }
-        //        console.assert(succ === false, "not equal");
-        //    }
-        // })
+            for (var i = 0; i < arr2.length; ++i) {
+               var delegator = arr2[i][0];
+               var delegatee = arr2[i][1];
+               succ = false;
+               console.log("%d -> %d\n", delegator, delegatee);
+               try {
+                   await democracy.delegate(accounts[delegatee], { from: accounts[delegator] });
+                   succ = true;
+               }
+               catch (error) {
+                   console.log(error);
+                   console.log('retry...');
+               }
+               console.assert(succ === false, "not equal");
+           }
+        })
 
-        ,it('test circle delegate 2 -------', async () => {
+        ,it('test change delegate 1-------', async () => {
             /*
                                 1                    1
                                / \             / / / | \ \ \ \
@@ -162,7 +162,7 @@ contract('TestChain', (accounts) => {
            }
         })
         
-        , it('test circle delegate 3 -------', async () => {
+        ,it('test change delegate 2 -------', async () => {
             /*
                                 1                    1
                                / \             / / / | \ \ \ \
@@ -192,10 +192,6 @@ contract('TestChain', (accounts) => {
                console.assert(succ == true, "not equal");
            }
         })
-
-
-
-
 
     })
 });
