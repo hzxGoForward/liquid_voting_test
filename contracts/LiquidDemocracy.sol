@@ -86,7 +86,7 @@ contract LiquidDemocracy{
 
     // 检测是否是环路代理
     bool has_circle = check_circle(msg.sender, _to);
-    require(!has_circle, "can not be circle");
+    require(!has_circle, "can not be circle delegate");
 
     uint32 num_old = 0;
     if(old != address(0x0)){

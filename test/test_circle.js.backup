@@ -66,6 +66,7 @@ contract('TestChain', (accounts) => {
                     console.log('retry...');
                 }
                 vg.addEdge(accounts[delegator], accounts[delegatee]);
+                expect(succ).to.equal(true);
             }
         }),
     
@@ -85,6 +86,7 @@ contract('TestChain', (accounts) => {
                     console.log(error);
                     console.log('retry...');
                 }
+                expect(succ).to.equal(false);
             }
         }),
         it('test change delegatee', async () => {
@@ -124,6 +126,12 @@ contract('TestChain', (accounts) => {
                     console.log(error);
                     console.log('retry...');
                 }
+                if (i == arr3.length - 1) {
+                    expect(succ).to.equal(false);
+                }
+                else { 
+                    expect(succ).to.equal(true);
+                }
             }
         }),
         
@@ -143,6 +151,7 @@ contract('TestChain', (accounts) => {
                 console.log(error);
                 console.log('retry...');
             }
+            expect(succ).to.equal(true);
         }
     })
 
