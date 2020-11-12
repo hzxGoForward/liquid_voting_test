@@ -25,7 +25,7 @@ contract('TestChain', (accounts) => {
 	context("delegate", () => {
 
         it('test delegate graph', async () => {
-        这段代码测试线性委托的复杂度
+        // 这段代码测试线性委托的复杂度
         for(i = 0; i < vcount; ++i){
             await democracy.setWeight(accounts[i], 1);
             n = VNode.createNew(accounts[i], 1, 0, 0, 0, 0, 0);
